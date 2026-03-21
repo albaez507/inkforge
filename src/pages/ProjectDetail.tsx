@@ -444,6 +444,7 @@ export default function ProjectDetail() {
             <BookPreview
               project={project}
               activeChapterId={activeChapterId}
+              onChapterChange={(id) => setActiveChapterId(id)}
             />
           </div>
         </div>

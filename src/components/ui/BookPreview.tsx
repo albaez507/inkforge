@@ -1,4 +1,5 @@
-import { useRef, useState, useLayoutEffect } from 'react'
+import { useRef, useState, useLayoutEffect, useEffect } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Project } from '../../types'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -31,15 +32,34 @@ function fmtNum(n: number, style: string) {
 type Props = {
   project: Project
   activeChapterId: string | null
+  onChapterChange?: (id: string) => void
 }
 
 const PX_PER_IN = 82
 
-export default function BookPreview({ project, activeChapterId }: Props) {
+export default function BookPreview({ project, activeChapterId, onChapterChange }: Props) {
   const { settings, chapters } = project
   const cs = settings.chapterStyles[0]
 
-  const chapter = chapters.find((c) => c.id === activeChapterId) ?? chapters[0]
+  // Internal navigation index — syncs with activeChapterId from editor
+  const [previewIdx, setPreviewIdx] = useState<number>(() => {
+    const idx = chapters.findIndex((c) => c.id === activeChapterId)
+    return idx >= 0 ? idx : 0
+  })
+
+  // When editor changes active chapter, sync preview
+  useEffect(() => {
+    const idx = chapters.findIndex((c) => c.id === activeChapterId)
+    if (idx >= 0 && idx !== previewIdx) setPreviewIdx(idx)
+  }, [activeChapterId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function goTo(idx: number) {
+    const clamped = Math.max(0, Math.min(chapters.length - 1, idx))
+    setPreviewIdx(clamped)
+    if (chapters[clamped]) onChapterChange?.(chapters[clamped].id)
+  }
+
+  const chapter = chapters[previewIdx] ?? chapters[0]
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(236)
@@ -67,13 +87,45 @@ export default function BookPreview({ project, activeChapterId }: Props) {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-parchment-100 border-l border-parchment-300">
 
-      {/* Header — same height/style as other headers in the app */}
-      <div className="shrink-0 h-11 flex items-center justify-between px-4 bg-white border-b border-parchment-300">
+      {/* Header */}
+      <div className="shrink-0 h-11 flex items-center justify-between px-3 bg-white border-b border-parchment-300">
         <span className="text-xs font-medium text-ink-600">Vista previa</span>
         <span className="text-2xs text-ink-400 font-mono tabular-nums">
           {settings.trimSize.width} × {settings.trimSize.height} in
         </span>
       </div>
+
+      {/* Chapter navigation bar */}
+      {chapters.length > 0 && (
+        <div className="shrink-0 flex items-center justify-between px-3 py-2 bg-white border-b border-parchment-200">
+          <button
+            onClick={() => goTo(previewIdx - 1)}
+            disabled={previewIdx === 0}
+            className="p-1 rounded-md hover:bg-parchment-200 text-ink-500 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            title="Capítulo anterior"
+          >
+            <ChevronLeft size={15} strokeWidth={2} />
+          </button>
+
+          <div className="flex-1 text-center min-w-0 px-2">
+            <p className="text-xs font-medium text-ink-800 truncate">
+              {chapter?.title ?? '—'}
+            </p>
+            <p className="text-2xs text-ink-400 tabular-nums">
+              {previewIdx + 1} de {chapters.length}
+            </p>
+          </div>
+
+          <button
+            onClick={() => goTo(previewIdx + 1)}
+            disabled={previewIdx === chapters.length - 1}
+            className="p-1 rounded-md hover:bg-parchment-200 text-ink-500 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+            title="Capítulo siguiente"
+          >
+            <ChevronRight size={15} strokeWidth={2} />
+          </button>
+        </div>
+      )}
 
       {/* Scrollable page area */}
       <div ref={containerRef} className="flex-1 overflow-y-auto flex flex-col items-center py-8 px-4 gap-3">
