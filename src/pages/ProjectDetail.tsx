@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Plus, BookOpen, AlignLeft, BookMarked, Settings2,
-  Trash2, MoreHorizontal, Check, X, GripVertical,
+  Trash2, MoreHorizontal, Check, X, GripVertical, Eye,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -17,6 +17,7 @@ import { useProjectStore } from '../store/projectStore'
 import ChapterEditor from '../components/ui/ChapterEditor'
 import MatterEditor from '../components/ui/MatterEditor'
 import BookSettingsPanel from '../components/ui/BookSettingsPanel'
+import BookPreview from '../components/ui/BookPreview'
 import type { Chapter } from '../types'
 
 // ── Sortable chapter item ──────────────────────────────────────────────────
@@ -157,11 +158,12 @@ export default function ProjectDetail() {
     reorderChapters(project.id, newIds)
   }
 
-  const [activeTab, setActiveTab]           = useState<TabId>('manuscript')
+  const [activeTab, setActiveTab]             = useState<TabId>('manuscript')
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
-  const [menuChapterId, setMenuChapterId]   = useState<string | null>(null)
-  const [renamingId, setRenamingId]         = useState<string | null>(null)
-  const [renameValue, setRenameValue]       = useState('')
+  const [menuChapterId, setMenuChapterId]     = useState<string | null>(null)
+  const [renamingId, setRenamingId]           = useState<string | null>(null)
+  const [renameValue, setRenameValue]         = useState('')
+  const [showPreview, setShowPreview]         = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
 
   // Auto-select first chapter when chapters become available
@@ -248,6 +250,13 @@ export default function ProjectDetail() {
             <p className="text-sm font-medium text-ink-900 truncate">{project.title}</p>
             <p className="text-2xs text-ink-400">por {project.author}</p>
           </div>
+          <button
+            onClick={() => setShowPreview(true)}
+            className="p-1.5 rounded-lg hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors"
+            title="Vista previa del libro"
+          >
+            <Eye size={14} strokeWidth={1.8} />
+          </button>
         </div>
 
         {/* Tabs */}
@@ -386,6 +395,10 @@ export default function ProjectDetail() {
           />
         )}
       </div>
+
+      {showPreview && (
+        <BookPreview project={project} onClose={() => setShowPreview(false)} />
+      )}
     </div>
   )
 }

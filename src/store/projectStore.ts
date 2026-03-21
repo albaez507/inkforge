@@ -61,14 +61,15 @@ function rowToProject(row: Record<string, unknown>, chapters: Chapter[] = [], fr
 
 function rowToChapter(row: Record<string, unknown>): Chapter {
   return {
-    id:        row.id as string,
-    title:     row.title as string,
-    order:     row.order as number,
-    content:   row.content as string,
-    styleId:   row.style_id as string,
-    wordCount: row.word_count as number,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
+    id:              row.id as string,
+    title:           row.title as string,
+    order:           row.order as number,
+    content:         row.content as string,
+    styleId:         row.style_id as string,
+    wordCount:       row.word_count as number,
+    targetWordCount: row.target_word_count as number | undefined,
+    createdAt:       row.created_at as string,
+    updatedAt:       row.updated_at as string,
   }
 }
 

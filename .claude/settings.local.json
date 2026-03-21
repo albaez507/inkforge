@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where npm:*)",
+      "Bash(npm --version)",
+      "Bash(where node:*)",
+      "Bash(ls \"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\\\\node_modules\\\\.bin\\\\vite\"*)",
+      "Bash(dir \"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\\\\node_modules\\\\.bin\\\\vite*\")",
+      "Bash(cmd /c \"dir \"\"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\\\\node_modules\\\\.bin\\\\vite*\"\"\")",
+      "Bash(cmd /c \"dir \"\"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\\\\node_modules\\\\.bin\"\"\")",
+      "Bash(cmd /c \"dir /b \"\"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\\\\node_modules\\\\.bin\"\"\")",
+      "Bash(cmd /c \"cd /d \"\"C:\\\\Users\\\\witha\\\\Documents\\\\DEVELOPMENT EMANUEL\\\\inkforge\"\" && dir /b node_modules\\\\.bin 2>&1\")",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__list_projects",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__get_cost",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__confirm_cost",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__create_project",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__pause_project",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__get_project_url",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__get_publishable_keys",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__apply_migration",
+      "Bash(npm install:*)",
+      "Bash(gh auth:*)"
+    ]
+  }
+}

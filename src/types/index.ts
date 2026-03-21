@@ -44,6 +44,7 @@ export type Chapter = {
   content: string
   styleId: string
   wordCount: number
+  targetWordCount?: number
   createdAt: string
   updatedAt: string
 }

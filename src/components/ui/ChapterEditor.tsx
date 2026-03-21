@@ -6,7 +6,7 @@ import Typography from '@tiptap/extension-typography'
 import {
   Bold, Italic, Heading1, Heading2, Heading3,
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
-  Minus, Maximize2, Minimize2,
+  Minus, Maximize2, Minimize2, Target,
 } from 'lucide-react'
 import type { Chapter } from '../../types'
 import { useProjectStore } from '../../store/projectStore'
@@ -51,7 +51,9 @@ function ToolbarDivider() {
 
 export default function ChapterEditor({ projectId, chapter }: Props) {
   const updateChapter = useProjectStore((s) => s.updateChapter)
-  const [focusMode, setFocusMode] = useState(false)
+  const [focusMode, setFocusMode]       = useState(false)
+  const [showGoalInput, setShowGoalInput] = useState(false)
+  const [goalInput, setGoalInput]         = useState('')
 
   // Escape key exits focus mode
   useEffect(() => {
@@ -192,11 +194,99 @@ export default function ChapterEditor({ projectId, chapter }: Props) {
           <Minus size={14} strokeWidth={2} />
         </ToolbarButton>
 
-        {/* Word count + focus toggle */}
-        <div className="ml-auto flex items-center gap-3">
-          <span className="text-2xs text-ink-400 font-mono tabular-nums">
-            {chapter.wordCount.toLocaleString()} palabras
-          </span>
+        {/* Word count + goal + focus toggle */}
+        <div className="ml-auto flex items-center gap-2">
+          {/* Goal progress */}
+          {chapter.targetWordCount ? (
+            <div className="flex items-center gap-2">
+              <div className="w-24 h-1.5 bg-parchment-300 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, (chapter.wordCount / chapter.targetWordCount) * 100)}%`,
+                    background: chapter.wordCount >= chapter.targetWordCount ? '#4a7c59' : '#b87333',
+                  }}
+                />
+              </div>
+              <span className="text-2xs font-mono tabular-nums text-ink-400">
+                {chapter.wordCount.toLocaleString()}
+                <span className="text-ink-300">/{chapter.targetWordCount.toLocaleString()}</span>
+              </span>
+            </div>
+          ) : (
+            <span className="text-2xs text-ink-400 font-mono tabular-nums">
+              {chapter.wordCount.toLocaleString()} palabras
+            </span>
+          )}
+
+          {/* Set goal */}
+          <div className="relative">
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setGoalInput(chapter.targetWordCount?.toString() ?? '')
+                setShowGoalInput((v) => !v)
+              }}
+              title="Objetivo de palabras"
+              className={`p-1.5 rounded-md transition-colors ${
+                chapter.targetWordCount
+                  ? 'text-copper-500 hover:bg-parchment-200'
+                  : 'text-ink-300 hover:text-ink-600 hover:bg-parchment-200'
+              }`}
+            >
+              <Target size={14} strokeWidth={2} />
+            </button>
+
+            {showGoalInput && (
+              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-parchment-300 rounded-lg shadow-card p-3 w-52">
+                <p className="text-xs font-medium text-ink-700 mb-2">Objetivo del capítulo</p>
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="number"
+                    min={0}
+                    placeholder="ej. 3000"
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt(goalInput) || undefined
+                        updateChapter(projectId, chapter.id, { targetWordCount: val })
+                        setShowGoalInput(false)
+                      }
+                      if (e.key === 'Escape') setShowGoalInput(false)
+                    }}
+                    className="flex-1 text-xs px-2 py-1.5 border border-parchment-300 rounded-md focus:outline-none focus:ring-1 focus:ring-ink-400"
+                  />
+                  <button
+                    onMouseDown={() => {
+                      const val = parseInt(goalInput) || undefined
+                      updateChapter(projectId, chapter.id, { targetWordCount: val })
+                      setShowGoalInput(false)
+                    }}
+                    className="px-2 py-1 text-xs bg-ink-900 text-white rounded-md hover:bg-ink-700"
+                  >
+                    OK
+                  </button>
+                </div>
+                {chapter.targetWordCount && (
+                  <button
+                    onMouseDown={() => {
+                      updateChapter(projectId, chapter.id, { targetWordCount: undefined })
+                      setGoalInput('')
+                      setShowGoalInput(false)
+                    }}
+                    className="mt-2 text-2xs text-ink-400 hover:text-red-500 transition-colors"
+                  >
+                    Quitar objetivo
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Focus mode */}
           <button
             type="button"
             onMouseDown={(e) => { e.preventDefault(); setFocusMode((v) => !v) }}
