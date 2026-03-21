@@ -1,0 +1,231 @@
+import { useEffect, useCallback, useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import TextAlign from '@tiptap/extension-text-align'
+import Typography from '@tiptap/extension-typography'
+import {
+  Bold, Italic, Heading1, Heading2, Heading3,
+  AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
+  Minus, Maximize2, Minimize2,
+} from 'lucide-react'
+import type { Chapter } from '../../types'
+import { useProjectStore } from '../../store/projectStore'
+
+function countWords(html: string): number {
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return text ? text.split(' ').length : 0
+}
+
+type Props = {
+  projectId: string
+  chapter: Chapter
+}
+
+type ToolbarButtonProps = {
+  onClick: () => void
+  active?: boolean
+  title: string
+  children: React.ReactNode
+}
+
+function ToolbarButton({ onClick, active, title, children }: ToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => { e.preventDefault(); onClick() }}
+      title={title}
+      className={`p-1.5 rounded-md transition-colors ${
+        active
+          ? 'bg-ink-900 text-white'
+          : 'text-ink-500 hover:text-ink-900 hover:bg-parchment-200'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function ToolbarDivider() {
+  return <div className="w-px h-5 bg-parchment-300 mx-1" />
+}
+
+export default function ChapterEditor({ projectId, chapter }: Props) {
+  const updateChapter = useProjectStore((s) => s.updateChapter)
+  const [focusMode, setFocusMode] = useState(false)
+
+  // Escape key exits focus mode
+  useEffect(() => {
+    if (!focusMode) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setFocusMode(false) }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [focusMode])
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Typography,
+    ],
+    content: chapter.content || '',
+    editorProps: {
+      attributes: {
+        class: 'outline-none prose-editor',
+        spellcheck: 'true',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML()
+      const wc = countWords(html)
+      updateChapter(projectId, chapter.id, { content: html, wordCount: wc })
+    },
+  })
+
+  // When the chapter changes (user clicks a different chapter), update editor content
+  useEffect(() => {
+    if (editor && editor.getHTML() !== chapter.content) {
+      editor.commands.setContent(chapter.content || '')
+    }
+  }, [chapter.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleTitleBlur = useCallback((e: React.FocusEvent<HTMLHeadingElement>) => {
+    const newTitle = e.currentTarget.textContent?.trim() || 'Sin título'
+    if (newTitle !== chapter.title) {
+      updateChapter(projectId, chapter.id, { title: newTitle })
+    }
+  }, [projectId, chapter.id, chapter.title, updateChapter])
+
+  if (!editor) return null
+
+  const wrapperClass = focusMode
+    ? 'fixed inset-0 z-50 flex flex-col bg-parchment-50'
+    : 'flex flex-col h-full'
+
+  return (
+    <div className={wrapperClass}>
+      {/* Toolbar */}
+      <div className={`shrink-0 px-6 h-11 flex items-center gap-0.5 border-b border-parchment-300 ${focusMode ? 'bg-parchment-50' : 'bg-white'}`}>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBold().run()}
+          active={editor.isActive('bold')}
+          title="Negrita (Ctrl+B)"
+        >
+          <Bold size={14} strokeWidth={2.5} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+          active={editor.isActive('italic')}
+          title="Cursiva (Ctrl+I)"
+        >
+          <Italic size={14} strokeWidth={2} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+          active={editor.isActive('heading', { level: 1 })}
+          title="Título 1"
+        >
+          <Heading1 size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          active={editor.isActive('heading', { level: 2 })}
+          title="Título 2"
+        >
+          <Heading2 size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          active={editor.isActive('heading', { level: 3 })}
+          title="Título 3"
+        >
+          <Heading3 size={14} strokeWidth={2} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+          active={editor.isActive({ textAlign: 'left' })}
+          title="Alinear izquierda"
+        >
+          <AlignLeft size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('center').run()}
+          active={editor.isActive({ textAlign: 'center' })}
+          title="Centrar"
+        >
+          <AlignCenter size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign('right').run()}
+          active={editor.isActive({ textAlign: 'right' })}
+          title="Alinear derecha"
+        >
+          <AlignRight size={14} strokeWidth={2} />
+        </ToolbarButton>
+
+        <ToolbarDivider />
+
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          active={editor.isActive('bulletList')}
+          title="Lista con viñetas"
+        >
+          <List size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+          active={editor.isActive('orderedList')}
+          title="Lista numerada"
+        >
+          <ListOrdered size={14} strokeWidth={2} />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setHorizontalRule().run()}
+          active={false}
+          title="Separador"
+        >
+          <Minus size={14} strokeWidth={2} />
+        </ToolbarButton>
+
+        {/* Word count + focus toggle */}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-2xs text-ink-400 font-mono tabular-nums">
+            {chapter.wordCount.toLocaleString()} palabras
+          </span>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setFocusMode((v) => !v) }}
+            title={focusMode ? 'Salir del modo foco (Esc)' : 'Modo foco'}
+            className="p-1.5 rounded-md text-ink-400 hover:text-ink-700 hover:bg-parchment-200 transition-colors"
+          >
+            {focusMode ? <Minimize2 size={14} strokeWidth={2} /> : <Maximize2 size={14} strokeWidth={2} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable writing area */}
+      <div className={`flex-1 overflow-y-auto ${focusMode ? 'bg-parchment-50' : 'bg-parchment-100'}`}>
+        <div className={`mx-auto py-16 ${focusMode ? 'max-w-[720px] px-16' : 'max-w-[680px] px-12'}`}>
+          {/* Chapter title (editable inline) */}
+          <h1
+            contentEditable
+            suppressContentEditableWarning
+            onBlur={handleTitleBlur}
+            className="text-3xl font-serif font-bold text-ink-900 mb-10 outline-none focus:border-b-2 focus:border-copper-400 pb-1 empty:before:content-[attr(data-placeholder)] empty:before:text-ink-300"
+            data-placeholder="Título del capítulo"
+          >
+            {chapter.title}
+          </h1>
+
+          {/* TipTap editor */}
+          <EditorContent editor={editor} />
+        </div>
+      </div>
+    </div>
+  )
+}

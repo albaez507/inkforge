@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-parchment-100 text-ink-900 font-sans;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100svh;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-200 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-300;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 cursor-pointer select-none;
+  }
+  .btn-primary {
+    @apply btn bg-ink-900 text-parchment-50 hover:bg-ink-800 shadow-soft active:scale-95;
+  }
+  .btn-secondary {
+    @apply btn bg-parchment-200 text-ink-700 hover:bg-parchment-300 active:scale-95;
+  }
+  .btn-ghost {
+    @apply btn text-ink-600 hover:bg-parchment-200 hover:text-ink-800 active:scale-95;
+  }
+  .btn-copper {
+    @apply btn bg-copper-500 text-white hover:bg-copper-600 shadow-soft active:scale-95;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-parchment-300/60;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-parchment-300 bg-white text-ink-900 text-sm placeholder:text-ink-400
+           focus:outline-none focus:ring-2 focus:ring-ink-900/10 focus:border-ink-400 transition-all duration-150;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-ink-600 mb-1.5 tracking-wide uppercase;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-2xs font-medium;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-600 hover:bg-parchment-200 hover:text-ink-900 transition-all duration-150 cursor-pointer;
+  }
+  .sidebar-item-active {
+    @apply sidebar-item bg-parchment-200 text-ink-900 font-medium;
+  }
+
+  .divider {
+    @apply border-t border-parchment-300;
+  }
+
+  /* TipTap prose editor */
+  .prose-editor {
+    @apply font-serif text-ink-900 leading-relaxed;
+    font-size: 16px;
+    min-height: 400px;
+  }
+  .prose-editor p {
+    @apply mb-4;
+  }
+  .prose-editor h1 {
+    @apply text-2xl font-bold font-serif mb-4 mt-8 text-ink-900;
+  }
+  .prose-editor h2 {
+    @apply text-xl font-semibold font-serif mb-3 mt-6 text-ink-800;
+  }
+  .prose-editor h3 {
+    @apply text-lg font-semibold font-serif mb-2 mt-5 text-ink-800;
+  }
+  .prose-editor strong {
+    @apply font-semibold text-ink-900;
+  }
+  .prose-editor em {
+    @apply italic;
+  }
+  .prose-editor ul {
+    @apply list-disc pl-6 mb-4 space-y-1;
+  }
+  .prose-editor ol {
+    @apply list-decimal pl-6 mb-4 space-y-1;
+  }
+  .prose-editor hr {
+    @apply border-parchment-400 my-8;
+  }
+  .prose-editor p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    @apply text-ink-300 float-left h-0 pointer-events-none;
+  }
+}
