@@ -8,7 +8,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, List, ListOrdered,
   Minus, Maximize2, Minimize2, Target,
 } from 'lucide-react'
-import type { Chapter } from '../../types'
+import type { Chapter, BookSettings } from '../../types'
 import { useProjectStore } from '../../store/projectStore'
 
 function countWords(html: string): number {
@@ -19,6 +19,7 @@ function countWords(html: string): number {
 type Props = {
   projectId: string
   chapter: Chapter
+  settings: BookSettings
 }
 
 type ToolbarButtonProps = {
@@ -49,8 +50,19 @@ function ToolbarDivider() {
   return <div className="w-px h-5 bg-parchment-300 mx-1" />
 }
 
-export default function ChapterEditor({ projectId, chapter }: Props) {
+export default function ChapterEditor({ projectId, chapter, settings }: Props) {
   const updateChapter = useProjectStore((s) => s.updateChapter)
+
+  // Compute editor CSS vars from book settings.
+  // fontSize is stored in pt (for print); convert to px for screen (1pt ≈ 1.333px).
+  // Enforce a minimum of 16px so the editor stays comfortable to read/write.
+  const editorFontPx = Math.max(16, Math.round(settings.fontSize * 1.333))
+  const editorCssVars = {
+    '--editor-font': `'${settings.fontFamily}', Georgia, serif`,
+    '--editor-size': `${editorFontPx}px`,
+    '--editor-lh':   String(settings.lineHeight),
+  } as React.CSSProperties
+
   const [focusMode, setFocusMode]       = useState(false)
   const [showGoalInput, setShowGoalInput] = useState(false)
   const [goalInput, setGoalInput]         = useState('')
@@ -298,15 +310,23 @@ export default function ChapterEditor({ projectId, chapter }: Props) {
         </div>
       </div>
 
-      {/* Scrollable writing area */}
-      <div className={`flex-1 overflow-y-auto ${focusMode ? 'bg-parchment-50' : 'bg-parchment-100'}`}>
+      {/* Scrollable writing area — CSS vars set book typography */}
+      <div
+        className={`flex-1 overflow-y-auto ${focusMode ? 'bg-parchment-50' : 'bg-parchment-100'}`}
+        style={editorCssVars}
+      >
         <div className={`mx-auto py-16 ${focusMode ? 'max-w-[720px] px-16' : 'max-w-[680px] px-12'}`}>
-          {/* Chapter title (editable inline) */}
+          {/* Chapter title (editable inline) — uses book font */}
           <h1
             contentEditable
             suppressContentEditableWarning
             onBlur={handleTitleBlur}
-            className="text-3xl font-serif font-bold text-ink-900 mb-10 outline-none focus:border-b-2 focus:border-copper-400 pb-1 empty:before:content-[attr(data-placeholder)] empty:before:text-ink-300"
+            className="font-bold text-ink-900 mb-10 outline-none focus:border-b-2 focus:border-copper-400 pb-1 empty:before:content-[attr(data-placeholder)] empty:before:text-ink-300"
+            style={{
+              fontFamily: `'${settings.fontFamily}', Georgia, serif`,
+              fontSize:   `${editorFontPx * 1.8}px`,
+              lineHeight: 1.2,
+            }}
             data-placeholder="Título del capítulo"
           >
             {chapter.title}

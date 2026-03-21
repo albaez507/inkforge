@@ -410,7 +410,7 @@ export default function ProjectDetail() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {activeTab === 'manuscript' && (
           activeChapter ? (
-            <ChapterEditor projectId={project.id} chapter={activeChapter} />
+            <ChapterEditor projectId={project.id} chapter={activeChapter} settings={project.settings} />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center bg-parchment-100 text-ink-400 gap-3">
               <div className="w-12 h-12 rounded-full bg-parchment-200 flex items-center justify-center">

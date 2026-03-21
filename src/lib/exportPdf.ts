@@ -27,6 +27,10 @@ function fmtNum(n: number, style: string): string {
 
 // ── Chapter heading HTML ────────────────────────────────────────────────────
 
+function isGenericTitle(t: string): boolean {
+  return /^cap[íi]tulo\s*\d+$/i.test(t.trim())
+}
+
 function buildChapterHeading(ch: Chapter, cs: ChapterStyle, settings: BookSettings): string {
   const fs = settings.fontSize
   const ff = settings.fontFamily
@@ -50,7 +54,7 @@ function buildChapterHeading(ch: Chapter, cs: ChapterStyle, settings: BookSettin
           Capítulo ${fmtNum(ch.order, cs.numberStyle)}
         </p>
       ` : ''}
-      ${cs.showTitle ? `
+      ${cs.showTitle && !(cs.showNumber && cs.numberStyle !== 'none' && isGenericTitle(ch.title ?? '')) ? `
         <h2 style="font-family:'${ff}',Georgia,serif;font-size:${fs * 1.55}pt;font-weight:700;line-height:1.2;color:#1a1917;margin:0;">
           ${ch.title}
         </h2>

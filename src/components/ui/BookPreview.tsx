@@ -61,6 +61,10 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
 
   const chapter = chapters[previewIdx] ?? chapters[0]
 
+  // A title like "Capítulo 1" or "capitulo 3" is just a placeholder —
+  // when showNumber is active it would duplicate the number label above it.
+  const isGenericTitle = (t: string) => /^cap[íi]tulo\s*\d+$/i.test(t.trim())
+
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(236)
 
@@ -188,7 +192,10 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
                       </p>
                     )}
 
-                    {cs.showTitle && (
+                    {cs.showTitle &&
+                     /* Skip title when it's a generic "Capítulo N" and the
+                        number label above already conveys that information */
+                     !(cs.showNumber && cs.numberStyle !== 'none' && isGenericTitle(chapter.title ?? '')) && (
                       <h2 style={{
                         fontFamily: settings.fontFamily,
                         fontSize:   `${settings.fontSize * 1.55}pt`,
