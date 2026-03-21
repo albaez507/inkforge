@@ -32,7 +32,7 @@ type Props = {
   activeChapterId: string | null
 }
 
-const PX_PER_IN = 82   // screen approximation
+const PX_PER_IN = 82
 
 export default function BookPreview({ project, activeChapterId }: Props) {
   const { settings, chapters } = project
@@ -40,7 +40,6 @@ export default function BookPreview({ project, activeChapterId }: Props) {
 
   const chapter = chapters.find((c) => c.id === activeChapterId) ?? chapters[0]
 
-  // Page size in px
   const pageW = settings.trimSize.width  * PX_PER_IN
   const pageH = settings.trimSize.height * PX_PER_IN
   const mT    = settings.marginTop    * PX_PER_IN
@@ -48,51 +47,51 @@ export default function BookPreview({ project, activeChapterId }: Props) {
   const mI    = settings.marginInner  * PX_PER_IN
   const mO    = settings.marginOuter  * PX_PER_IN
 
-  // Scale page to fit the panel (panel is ~300px wide, leave 32px padding)
-  const PANEL_CONTENT_W = 268
+  // Scale page to fit panel width (panel ~300px, 32px padding each side)
+  const PANEL_CONTENT_W = 236
   const scale = Math.min(1, PANEL_CONTENT_W / pageW)
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden bg-[#3a3a3a]">
+    <div className="w-full h-full flex flex-col overflow-hidden bg-parchment-100 border-l border-parchment-300">
 
-      {/* Panel header */}
-      <div className="shrink-0 h-9 flex items-center justify-between px-3 bg-[#2e2e2e] border-b border-[#222]">
-        <span className="text-2xs font-medium text-[#aaa] uppercase tracking-widest">Vista previa</span>
-        <span className="text-2xs text-[#666] font-mono">
+      {/* Header — same height/style as other headers in the app */}
+      <div className="shrink-0 h-11 flex items-center justify-between px-4 bg-white border-b border-parchment-300">
+        <span className="text-xs font-medium text-ink-600">Vista previa</span>
+        <span className="text-2xs text-ink-400 font-mono tabular-nums">
           {settings.trimSize.width} × {settings.trimSize.height} in
         </span>
       </div>
 
       {/* Scrollable page area */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center py-6 gap-4">
+      <div className="flex-1 overflow-y-auto flex flex-col items-center py-8 px-4 gap-3">
         {!chapter ? (
-          <p className="text-xs text-[#666] mt-8">Sin capítulos</p>
+          <p className="text-xs text-ink-400 mt-8">Sin capítulos</p>
         ) : (
           <>
-            {/* Scaled page */}
+            {/* Page shadow wrapper — scales the page down to fit */}
             <div
               style={{
-                width:     pageW * scale,
-                height:    pageH * scale,
-                transform: `scale(1)`,
-                transformOrigin: 'top center',
-                flexShrink: 0,
+                width:          pageW * scale,
+                height:         pageH * scale,
+                flexShrink:     0,
+                position:       'relative',
               }}
             >
               <div
                 style={{
-                  width:      pageW,
-                  minHeight:  pageH,
-                  transform:  `scale(${scale})`,
+                  width:           pageW,
+                  minHeight:       pageH,
+                  transform:       `scale(${scale})`,
                   transformOrigin: 'top left',
-                  background: '#fff',
-                  boxShadow:  '0 4px 24px rgba(0,0,0,0.5)',
-                  overflow:   'hidden',
-                  position:   'relative',
-                  boxSizing:  'border-box',
+                  background:      '#fff',
+                  boxShadow:       '0 2px 12px rgba(0,0,0,0.10), 0 1px 3px rgba(0,0,0,0.06)',
+                  overflow:        'hidden',
+                  position:        'relative',
+                  boxSizing:       'border-box',
+                  border:          '1px solid #e8e0d5',
                 }}
               >
-                {/* Inner content with margins */}
+                {/* Content with book margins */}
                 <div
                   style={{
                     paddingTop:    mT,
@@ -104,20 +103,20 @@ export default function BookPreview({ project, activeChapterId }: Props) {
                     fontFamily:    settings.fontFamily,
                     fontSize:      `${settings.fontSize}pt`,
                     lineHeight:    settings.lineHeight,
-                    color:         '#111',
+                    color:         '#1a1917',
                     wordBreak:     'break-word',
                     overflowWrap:  'break-word',
                   }}
                 >
-                  {/* ── Chapter heading ── */}
-                  <div style={{ textAlign: cs.alignment, marginBottom: '2.5em' }}>
+                  {/* Chapter heading */}
+                  <div style={{ textAlign: cs.alignment, marginBottom: '2.4em' }}>
                     {cs.showNumber && cs.numberStyle !== 'none' && (
                       <p style={{
                         fontSize:      `${settings.fontSize * 0.72}pt`,
-                        letterSpacing: '0.18em',
+                        letterSpacing: '0.16em',
                         textTransform: 'uppercase',
-                        color:         '#777',
-                        marginBottom:  '0.4em',
+                        color:         '#8a7f72',
+                        marginBottom:  '0.5em',
                         fontFamily:    settings.fontFamily,
                       }}>
                         Capítulo {fmtNum(chapter.order, cs.numberStyle)}
@@ -131,30 +130,34 @@ export default function BookPreview({ project, activeChapterId }: Props) {
                         fontWeight: 700,
                         lineHeight: 1.2,
                         margin:     0,
+                        color:      '#1a1917',
                       }}>
                         {chapter.title}
                       </h2>
                     )}
 
-                    {/* Decorator */}
                     {cs.decoratorStyle === 'line' && (
                       <div style={{
                         width:      36,
                         height:     1,
-                        background: '#333',
+                        background: '#c4b9ad',
                         margin:     cs.alignment === 'center' ? '1em auto 0' :
                                     cs.alignment === 'right'  ? '1em 0 0 auto' : '1em auto 0 0',
                       }} />
                     )}
                     {cs.decoratorStyle === 'dots' && (
-                      <p style={{ marginTop: '1em', letterSpacing: '0.3em', color: '#888', fontSize: `${settings.fontSize * 0.85}pt` }}>· · ·</p>
+                      <p style={{ marginTop: '1em', letterSpacing: '0.3em', color: '#b0a090', fontSize: `${settings.fontSize * 0.85}pt` }}>
+                        · · ·
+                      </p>
                     )}
                     {cs.decoratorStyle === 'ornament' && (
-                      <p style={{ marginTop: '0.8em', fontSize: `${settings.fontSize * 1.1}pt` }}>❧</p>
+                      <p style={{ marginTop: '0.8em', fontSize: `${settings.fontSize * 1.1}pt`, color: '#8a7f72' }}>
+                        ❧
+                      </p>
                     )}
                   </div>
 
-                  {/* ── Chapter body ── */}
+                  {/* Body */}
                   {chapter.content ? (
                     <div
                       className="prose-preview"
@@ -162,13 +165,14 @@ export default function BookPreview({ project, activeChapterId }: Props) {
                         fontFamily:   settings.fontFamily,
                         fontSize:     `${settings.fontSize}pt`,
                         lineHeight:   settings.lineHeight,
+                        color:        '#1a1917',
                         wordBreak:    'break-word',
                         overflowWrap: 'break-word',
                       }}
                       dangerouslySetInnerHTML={{ __html: chapter.content }}
                     />
                   ) : (
-                    <p style={{ color: '#bbb', fontStyle: 'italic', fontSize: `${settings.fontSize}pt` }}>
+                    <p style={{ color: '#c4b9ad', fontStyle: 'italic', fontSize: `${settings.fontSize}pt` }}>
                       Escribe algo para ver la vista previa...
                     </p>
                   )}
@@ -183,22 +187,22 @@ export default function BookPreview({ project, activeChapterId }: Props) {
                   textAlign:  'center',
                   fontFamily: settings.fontFamily,
                   fontSize:   `${settings.fontSize * 0.78}pt`,
-                  color:      '#999',
+                  color:      '#b0a090',
                 }}>
                   {chapter.order * 2}
                 </div>
               </div>
             </div>
 
-            {/* Chapter stats */}
-            <div className="text-center space-y-0.5 pb-4">
-              <p className="text-2xs text-[#888] font-mono">
+            {/* Metadata strip */}
+            <div className="w-full text-center space-y-0.5 pb-2">
+              <p className="text-2xs text-ink-400 font-mono tabular-nums">
                 {chapter.wordCount.toLocaleString()} palabras
                 {chapter.targetWordCount ? (
-                  <span className="text-[#555]"> / {chapter.targetWordCount.toLocaleString()}</span>
+                  <span className="text-ink-300"> / {chapter.targetWordCount.toLocaleString()}</span>
                 ) : null}
               </p>
-              <p className="text-2xs text-[#555]">
+              <p className="text-2xs text-ink-300">
                 {settings.fontFamily} · {settings.fontSize}pt · ×{settings.lineHeight}
               </p>
             </div>

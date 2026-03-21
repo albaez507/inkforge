@@ -402,7 +402,7 @@ export default function ProjectDetail() {
 
       {/* ── Preview panel (right side) ── */}
       {showPreview && (
-        <div className="w-[300px] shrink-0 border-l border-[#2e2e2e] overflow-hidden">
+        <div className="w-[300px] shrink-0 overflow-hidden">
           <BookPreview
             project={project}
             activeChapterId={activeChapterId}
