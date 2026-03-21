@@ -164,7 +164,38 @@ export default function ProjectDetail() {
   const [renamingId, setRenamingId]           = useState<string | null>(null)
   const [renameValue, setRenameValue]         = useState('')
   const [showPreview, setShowPreview]         = useState(false)
+  const [previewWidth, setPreviewWidth]       = useState<number>(() => {
+    const saved = localStorage.getItem('inkforge:previewWidth')
+    return saved ? parseInt(saved) : 320
+  })
+  const isResizing   = useRef(false)
+  const startX       = useRef(0)
+  const startWidth   = useRef(0)
+  const currentWidth = useRef(previewWidth)
   const renameInputRef = useRef<HTMLInputElement>(null)
+
+  function onResizeStart(e: React.MouseEvent) {
+    isResizing.current  = true
+    startX.current      = e.clientX
+    startWidth.current  = currentWidth.current
+
+    const onMove = (ev: MouseEvent) => {
+      if (!isResizing.current) return
+      const delta = startX.current - ev.clientX
+      const next  = Math.min(600, Math.max(240, startWidth.current + delta))
+      currentWidth.current = next
+      setPreviewWidth(next)
+    }
+    const onUp = () => {
+      isResizing.current = false
+      localStorage.setItem('inkforge:previewWidth', String(currentWidth.current))
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   // Auto-select first chapter when chapters become available
   useEffect(() => {
@@ -400,13 +431,21 @@ export default function ProjectDetail() {
         )}
       </div>
 
-      {/* ── Preview panel (right side) ── */}
+      {/* ── Preview panel (right side, resizable) ── */}
       {showPreview && (
-        <div className="w-[300px] shrink-0 overflow-hidden">
-          <BookPreview
-            project={project}
-            activeChapterId={activeChapterId}
+        <div className="shrink-0 flex overflow-hidden" style={{ width: previewWidth }}>
+          {/* Drag handle */}
+          <div
+            onMouseDown={onResizeStart}
+            className="w-1 shrink-0 cursor-col-resize hover:bg-copper-300 active:bg-copper-400 transition-colors bg-parchment-300"
+            title="Arrastrá para redimensionar"
           />
+          <div className="flex-1 overflow-hidden">
+            <BookPreview
+              project={project}
+              activeChapterId={activeChapterId}
+            />
+          </div>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { useRef, useState, useLayoutEffect } from 'react'
 import type { Project } from '../../types'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -40,6 +41,20 @@ export default function BookPreview({ project, activeChapterId }: Props) {
 
   const chapter = chapters.find((c) => c.id === activeChapterId) ?? chapters[0]
 
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [containerW, setContainerW] = useState(236)
+
+  // Measure real container width and react to resize
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(([entry]) => {
+      setContainerW(entry.contentRect.width - 32) // 16px padding each side
+    })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
   const pageW = settings.trimSize.width  * PX_PER_IN
   const pageH = settings.trimSize.height * PX_PER_IN
   const mT    = settings.marginTop    * PX_PER_IN
@@ -47,9 +62,7 @@ export default function BookPreview({ project, activeChapterId }: Props) {
   const mI    = settings.marginInner  * PX_PER_IN
   const mO    = settings.marginOuter  * PX_PER_IN
 
-  // Scale page to fit panel width (panel ~300px, 32px padding each side)
-  const PANEL_CONTENT_W = 236
-  const scale = Math.min(1, PANEL_CONTENT_W / pageW)
+  const scale = Math.min(1, containerW / pageW)
 
   return (
     <div className="w-full h-full flex flex-col overflow-hidden bg-parchment-100 border-l border-parchment-300">
@@ -63,7 +76,7 @@ export default function BookPreview({ project, activeChapterId }: Props) {
       </div>
 
       {/* Scrollable page area */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center py-8 px-4 gap-3">
+      <div ref={containerRef} className="flex-1 overflow-y-auto flex flex-col items-center py-8 px-4 gap-3">
         {!chapter ? (
           <p className="text-xs text-ink-400 mt-8">Sin capítulos</p>
         ) : (
