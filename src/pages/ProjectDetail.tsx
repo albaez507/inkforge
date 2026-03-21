@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Plus, BookOpen, AlignLeft, BookMarked, Settings2,
-  Trash2, MoreHorizontal, Check, X, GripVertical, Eye,
+  Trash2, MoreHorizontal, Check, X, GripVertical, Eye, Download,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useProjectStore } from '../store/projectStore'
+import { exportBookAsPdf } from '../lib/exportPdf'
 import ChapterEditor from '../components/ui/ChapterEditor'
 import MatterEditor from '../components/ui/MatterEditor'
 import BookSettingsPanel from '../components/ui/BookSettingsPanel'
@@ -164,6 +165,7 @@ export default function ProjectDetail() {
   const [renamingId, setRenamingId]           = useState<string | null>(null)
   const [renameValue, setRenameValue]         = useState('')
   const [showPreview, setShowPreview]         = useState(false)
+  const [isExporting, setIsExporting]         = useState(false)
   const [previewWidth, setPreviewWidth]       = useState<number>(() => {
     const saved = localStorage.getItem('inkforge:previewWidth')
     return saved ? parseInt(saved) : 320
@@ -229,6 +231,16 @@ export default function ProjectDetail() {
     (ch) => ch.id === activeChapterId
   )
 
+  function handleExportPdf() {
+    if (!project || isExporting) return
+    setIsExporting(true)
+    try {
+      exportBookAsPdf(project)
+    } finally {
+      setTimeout(() => setIsExporting(false), 1500)
+    }
+  }
+
   function handleAddChapter() {
     if (!project) return
     addChapter(project.id, `Capítulo ${project.chapters.length + 1}`)
@@ -281,6 +293,14 @@ export default function ProjectDetail() {
             <p className="text-sm font-medium text-ink-900 truncate">{project.title}</p>
             <p className="text-2xs text-ink-400">por {project.author}</p>
           </div>
+          <button
+            onClick={handleExportPdf}
+            disabled={isExporting}
+            className="p-1.5 rounded-lg hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Exportar como PDF"
+          >
+            <Download size={14} strokeWidth={1.8} />
+          </button>
           <button
             onClick={() => setShowPreview((v) => !v)}
             className={`p-1.5 rounded-lg transition-colors ${
