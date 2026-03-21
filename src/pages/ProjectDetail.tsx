@@ -251,9 +251,13 @@ export default function ProjectDetail() {
             <p className="text-2xs text-ink-400">por {project.author}</p>
           </div>
           <button
-            onClick={() => setShowPreview(true)}
-            className="p-1.5 rounded-lg hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors"
-            title="Vista previa del libro"
+            onClick={() => setShowPreview((v) => !v)}
+            className={`p-1.5 rounded-lg transition-colors ${
+              showPreview
+                ? 'bg-ink-900 text-white'
+                : 'hover:bg-parchment-200 text-ink-400 hover:text-ink-700'
+            }`}
+            title={showPreview ? 'Ocultar vista previa' : 'Vista previa del libro'}
           >
             <Eye size={14} strokeWidth={1.8} />
           </button>
@@ -396,8 +400,14 @@ export default function ProjectDetail() {
         )}
       </div>
 
+      {/* ── Preview panel (right side) ── */}
       {showPreview && (
-        <BookPreview project={project} onClose={() => setShowPreview(false)} />
+        <div className="w-[300px] shrink-0 border-l border-[#2e2e2e] overflow-hidden">
+          <BookPreview
+            project={project}
+            activeChapterId={activeChapterId}
+          />
+        </div>
       )}
     </div>
   )
