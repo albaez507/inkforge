@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Plus, BookOpen, AlignLeft, BookMarked, Settings2,
   Trash2, MoreHorizontal, Check, X, GripVertical, Eye, Download,
+  BookText, Layers, Sparkles, Loader2,
 } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -19,12 +20,22 @@ import ChapterEditor from '../components/ui/ChapterEditor'
 import MatterEditor from '../components/ui/MatterEditor'
 import BookSettingsPanel from '../components/ui/BookSettingsPanel'
 import BookPreview from '../components/ui/BookPreview'
-import type { Chapter } from '../types'
+import ImportManuscriptModal, { type ImportedChapter } from '../components/ui/ImportManuscriptModal'
+import type { Chapter, SectionType } from '../types'
+import { SECTION_TYPE_LABELS, SECTION_TYPE_SHORT } from '../types'
 
 // ── Sortable chapter item ──────────────────────────────────────────────────
 
+// Icon per section type
+function SectionIcon({ type, size = 11 }: { type: SectionType; size?: number }) {
+  if (type === 'part') return <Layers size={size} strokeWidth={2} className="text-copper-400" />
+  if (type !== 'chapter') return <BookText size={size} strokeWidth={2} className="text-sage-500" />
+  return null
+}
+
 type SortableChapterItemProps = {
   chapter: Chapter
+  displayLabel: string        // chapter number OR section short label
   isActive: boolean
   isRenaming: boolean
   renameValue: string
@@ -42,7 +53,7 @@ type SortableChapterItemProps = {
 }
 
 function SortableChapterItem({
-  chapter, isActive, isRenaming, renameValue, renameInputRef,
+  chapter, displayLabel, isActive, isRenaming, renameValue, renameInputRef,
   menuChapterId, onSelect, onMenuToggle, onRenameChange, onRenameKeyDown,
   onRenameBlur, onRenameCommit, onRenameCancel, onDelete, onStartRename,
 }: SortableChapterItemProps) {
@@ -55,6 +66,8 @@ function SortableChapterItem({
     opacity: isDragging ? 0.4 : 1,
     zIndex: isDragging ? 50 : undefined,
   }
+
+  const isSpecial = chapter.sectionType && chapter.sectionType !== 'chapter'
 
   return (
     <div ref={setNodeRef} style={style} className="relative group">
@@ -93,14 +106,26 @@ function SortableChapterItem({
           >
             <GripVertical size={13} strokeWidth={2} />
           </span>
-          <span className="text-ink-400 text-2xs w-4 shrink-0 text-right font-mono">{chapter.order}</span>
+
+          {/* Chapter number OR section icon + short label */}
+          {isSpecial ? (
+            <span className="flex items-center gap-1 shrink-0 w-9">
+              <SectionIcon type={chapter.sectionType!} size={11} />
+              <span className="text-2xs text-ink-400 font-mono leading-none">{displayLabel}</span>
+            </span>
+          ) : (
+            <span className="text-ink-400 text-2xs w-4 shrink-0 text-right font-mono">{displayLabel}</span>
+          )}
+
           <span className="truncate flex-1 text-left">{chapter.title}</span>
-          <button
+          <span
+            role="button"
+            tabIndex={0}
             onMouseDown={onMenuToggle}
             className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-parchment-300 text-ink-400 hover:text-ink-700 shrink-0 transition-opacity"
           >
             <MoreHorizontal size={12} />
-          </button>
+          </span>
         </button>
       )}
 
@@ -142,9 +167,10 @@ export default function ProjectDetail() {
   const navigate = useNavigate()
 
   const project        = useProjectStore((s) => s.projects.find((p) => p.id === id))
-  const addChapter     = useProjectStore((s) => s.addChapter)
-  const deleteChapter  = useProjectStore((s) => s.deleteChapter)
-  const updateChapter  = useProjectStore((s) => s.updateChapter)
+  const addChapter      = useProjectStore((s) => s.addChapter)
+  const importChapters  = useProjectStore((s) => s.importChapters)
+  const deleteChapter   = useProjectStore((s) => s.deleteChapter)
+  const updateChapter   = useProjectStore((s) => s.updateChapter)
   const reorderChapters = useProjectStore((s) => s.reorderChapters)
 
   const sensors = useSensors(
@@ -166,6 +192,10 @@ export default function ProjectDetail() {
   const [renameValue, setRenameValue]         = useState('')
   const [showPreview, setShowPreview]         = useState(false)
   const [isExporting, setIsExporting]         = useState(false)
+  const [showAddMenu, setShowAddMenu]         = useState(false)
+  const [showImport, setShowImport]           = useState(false)
+  const [isImporting, setIsImporting]         = useState(false)
+  const addMenuRef = useRef<HTMLDivElement>(null)
   const [previewWidth, setPreviewWidth]       = useState<number>(() => {
     const saved = localStorage.getItem('inkforge:previewWidth')
     return saved ? parseInt(saved) : 320
@@ -219,6 +249,18 @@ export default function ProjectDetail() {
     return () => document.removeEventListener('mousedown', close)
   }, [menuChapterId])
 
+  // Close add menu on outside click
+  useEffect(() => {
+    if (!showAddMenu) return
+    const close = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [showAddMenu])
+
   if (!project) {
     return (
       <div className="flex items-center justify-center h-full text-ink-400">
@@ -241,16 +283,42 @@ export default function ProjectDetail() {
     }
   }
 
-  function handleAddChapter() {
+  function handleAddSection(type: SectionType = 'chapter') {
     if (!project) return
-    addChapter(project.id, `Capítulo ${project.chapters.length + 1}`)
-    // Select the new chapter after state update
+    setShowAddMenu(false)
+
+    const regularCount = project.chapters.filter(
+      (c) => !c.sectionType || c.sectionType === 'chapter'
+    ).length
+
+    const title = type === 'chapter'
+      ? `Capítulo ${regularCount + 1}`
+      : SECTION_TYPE_LABELS[type]
+
+    addChapter(project.id, title, type)
     setTimeout(() => {
       const updated = useProjectStore.getState().projects.find((p) => p.id === id)
       if (updated && updated.chapters.length > 0) {
         setActiveChapterId(updated.chapters[updated.chapters.length - 1].id)
       }
     }, 0)
+  }
+
+  async function handleImport(chapters: ImportedChapter[]) {
+    if (!project) return
+    setShowImport(false)
+    setIsImporting(true)
+    try {
+      await importChapters(project.id, chapters)
+      // Select the first imported chapter
+      const updated = useProjectStore.getState().projects.find((p) => p.id === id)
+      if (updated && updated.chapters.length > 0) {
+        setActiveChapterId(updated.chapters[updated.chapters.length - chapters.length]?.id ?? null)
+        setActiveTab('manuscript')
+      }
+    } finally {
+      setIsImporting(false)
+    }
   }
 
   function handleDeleteChapter(chapterId: string) {
@@ -294,6 +362,17 @@ export default function ProjectDetail() {
             <p className="text-2xs text-ink-400">por {project.author}</p>
           </div>
           <button
+            onClick={() => setShowImport(true)}
+            disabled={isImporting}
+            className="p-1.5 rounded-lg hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Importar manuscrito con IA"
+          >
+            {isImporting
+              ? <Loader2 size={14} strokeWidth={1.8} className="animate-spin" />
+              : <Sparkles size={14} strokeWidth={1.8} />
+            }
+          </button>
+          <button
             onClick={handleExportPdf}
             disabled={isExporting}
             className="p-1.5 rounded-lg hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -331,59 +410,100 @@ export default function ProjectDetail() {
         {/* Chapter list — only shown in Manuscript tab */}
         {activeTab === 'manuscript' && (
           <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
+            {/* Header with add dropdown */}
             <div className="flex items-center justify-between px-3 py-1.5 mb-1">
-              <span className="text-2xs font-medium text-ink-400 uppercase tracking-wide">Capítulos</span>
-              <button
-                onClick={handleAddChapter}
-                className="p-0.5 rounded hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors"
-                title="Nuevo capítulo"
-              >
-                <Plus size={13} strokeWidth={2} />
-              </button>
+              <span className="text-2xs font-medium text-ink-400 uppercase tracking-wide">Manuscrito</span>
+              <div className="relative" ref={addMenuRef}>
+                <button
+                  onClick={() => setShowAddMenu((v) => !v)}
+                  className="p-0.5 rounded hover:bg-parchment-200 text-ink-400 hover:text-ink-700 transition-colors"
+                  title="Agregar sección"
+                >
+                  <Plus size={13} strokeWidth={2} />
+                </button>
+
+                {showAddMenu && (
+                  <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-parchment-300 rounded-lg shadow-card py-1 w-44">
+                    <button
+                      onClick={() => handleAddSection('chapter')}
+                      className="w-full text-left px-3 py-1.5 text-xs text-ink-700 hover:bg-parchment-100 transition-colors flex items-center gap-2"
+                    >
+                      <Plus size={11} strokeWidth={2} className="text-ink-400" />
+                      Capítulo
+                    </button>
+                    <div className="my-1 border-t border-parchment-200" />
+                    {(['introduction', 'prologue', 'epilogue', 'part'] as SectionType[]).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => handleAddSection(type)}
+                        className="w-full text-left px-3 py-1.5 text-xs text-ink-600 hover:bg-parchment-100 transition-colors flex items-center gap-2"
+                      >
+                        <SectionIcon type={type} size={11} />
+                        {SECTION_TYPE_LABELS[type]}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {project.chapters.length === 0 ? (
               <div className="px-3 py-4 text-center">
-                <p className="text-xs text-ink-400 leading-relaxed">No hay capítulos aún.</p>
-                <button onClick={handleAddChapter} className="btn-ghost text-xs mt-2 py-1.5 px-3">
+                <p className="text-xs text-ink-400 leading-relaxed">No hay contenido aún.</p>
+                <button onClick={() => handleAddSection('chapter')} className="btn-ghost text-xs mt-2 py-1.5 px-3">
                   <Plus size={12} /> Agregar capítulo
                 </button>
               </div>
-            ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext
-                  items={project.chapters.map((c) => c.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {project.chapters.map((ch) => (
-                    <SortableChapterItem
-                      key={ch.id}
-                      chapter={ch}
-                      isActive={ch.id === activeChapterId}
-                      isRenaming={renamingId === ch.id}
-                      renameValue={renameValue}
-                      renameInputRef={renameInputRef}
-                      menuChapterId={menuChapterId}
-                      onSelect={() => setActiveChapterId(ch.id)}
-                      onMenuToggle={(e) => {
-                        e.stopPropagation()
-                        setMenuChapterId(menuChapterId === ch.id ? null : ch.id)
-                      }}
-                      onRenameChange={setRenameValue}
-                      onRenameKeyDown={(e) => {
-                        if (e.key === 'Enter')  commitRename()
-                        if (e.key === 'Escape') setRenamingId(null)
-                      }}
-                      onRenameBlur={commitRename}
-                      onRenameCommit={commitRename}
-                      onRenameCancel={() => setRenamingId(null)}
-                      onDelete={() => handleDeleteChapter(ch.id)}
-                      onStartRename={() => startRename(ch)}
-                    />
-                  ))}
-                </SortableContext>
-              </DndContext>
-            )}
+            ) : (() => {
+              // Compute chapter numbers (only counting 'chapter' type items)
+              let chapterCount = 0
+              const displayLabels = project.chapters.reduce<Record<string, string>>((acc, ch) => {
+                if (!ch.sectionType || ch.sectionType === 'chapter') {
+                  chapterCount++
+                  acc[ch.id] = String(chapterCount)
+                } else {
+                  acc[ch.id] = SECTION_TYPE_SHORT[ch.sectionType]
+                }
+                return acc
+              }, {})
+
+              return (
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext
+                    items={project.chapters.map((c) => c.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {project.chapters.map((ch) => (
+                      <SortableChapterItem
+                        key={ch.id}
+                        chapter={ch}
+                        displayLabel={displayLabels[ch.id]}
+                        isActive={ch.id === activeChapterId}
+                        isRenaming={renamingId === ch.id}
+                        renameValue={renameValue}
+                        renameInputRef={renameInputRef}
+                        menuChapterId={menuChapterId}
+                        onSelect={() => setActiveChapterId(ch.id)}
+                        onMenuToggle={(e) => {
+                          e.stopPropagation()
+                          setMenuChapterId(menuChapterId === ch.id ? null : ch.id)
+                        }}
+                        onRenameChange={setRenameValue}
+                        onRenameKeyDown={(e) => {
+                          if (e.key === 'Enter')  commitRename()
+                          if (e.key === 'Escape') setRenamingId(null)
+                        }}
+                        onRenameBlur={commitRename}
+                        onRenameCommit={commitRename}
+                        onRenameCancel={() => setRenamingId(null)}
+                        onDelete={() => handleDeleteChapter(ch.id)}
+                        onStartRename={() => startRename(ch)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
+              )
+            })()}
           </div>
         )}
 
@@ -420,7 +540,7 @@ export default function ProjectDetail() {
                 <p className="text-sm font-medium text-ink-600">Selecciona un capítulo</p>
                 <p className="text-xs text-ink-400 mt-1">o crea uno nuevo para empezar a escribir</p>
               </div>
-              <button onClick={handleAddChapter} className="btn-primary mt-2">
+              <button onClick={() => handleAddSection('chapter')} className="btn-primary mt-2">
                 <Plus size={14} strokeWidth={2} /> Nuevo capítulo
               </button>
             </div>
@@ -450,6 +570,14 @@ export default function ProjectDetail() {
           />
         )}
       </div>
+
+      {/* ── Import manuscript modal ── */}
+      {showImport && (
+        <ImportManuscriptModal
+          onImport={handleImport}
+          onClose={() => setShowImport(false)}
+        />
+      )}
 
       {/* ── Preview panel (right side, resizable) ── */}
       {showPreview && (

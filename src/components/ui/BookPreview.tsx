@@ -1,8 +1,9 @@
 import { useRef, useState, useLayoutEffect, useEffect } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import type { Project } from '../../types'
+import type { Project, Chapter, ChapterStyle, BookSettings } from '../../types'
+import { SECTION_TYPE_LABELS } from '../../types'
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+// ── Number helpers ──────────────────────────────────────────────────────────
 
 function toRoman(n: number): string {
   const vals = [1000,900,500,400,100,90,50,40,10,9,5,4,1]
@@ -27,7 +28,171 @@ function fmtNum(n: number, style: string) {
   return String(n)
 }
 
-// ── Component ──────────────────────────────────────────────────────────────
+// Returns the 1-based chapter number counting only 'chapter' type entries
+function getChapterNumber(chapters: Chapter[], chapterId: string): number {
+  const regularChapters = chapters.filter((c) => !c.sectionType || c.sectionType === 'chapter')
+  const idx = regularChapters.findIndex((c) => c.id === chapterId)
+  return idx + 1
+}
+
+// ── Heading renderer ─────────────────────────────────────────────────────────
+
+type HeadingProps = {
+  chapter:  Chapter
+  chapters: Chapter[]
+  cs:       ChapterStyle
+  settings: BookSettings
+}
+
+function ChapterHeading({ chapter, chapters, cs, settings }: HeadingProps) {
+  const fs        = settings.fontSize
+  const ff        = settings.fontFamily
+  const align     = cs.alignment
+  const fmt       = cs.headingFormat ?? 'combined'
+  const isSpecial = chapter.sectionType && chapter.sectionType !== 'chapter'
+  const chNum     = getChapterNumber(chapters, chapter.id)
+
+  const isGenericTitle = (t: string) => /^cap[íi]tulo\s*\d+$/i.test(t.trim())
+
+  // ── Decorator ────────────────────────────────────────────────────────────
+  const decoratorStyle: React.CSSProperties = {
+    marginTop:  '1em',
+    display:    'block',
+    textAlign:  align,
+  }
+  let decorator: React.ReactNode = null
+  if (cs.decoratorStyle === 'line') {
+    decorator = (
+      <div style={{
+        width:      36,
+        height:     1,
+        background: '#c4b9ad',
+        marginTop:  '1em',
+        marginLeft:  align === 'center' ? 'auto' : align === 'right' ? 'auto' : undefined,
+        marginRight: align === 'center' ? 'auto' : align === 'right' ? 0 : undefined,
+      }} />
+    )
+  } else if (cs.decoratorStyle === 'dots') {
+    decorator = (
+      <span style={{ ...decoratorStyle, letterSpacing: '0.3em', color: '#b0a090', fontSize: `${fs * 0.85}pt` }}>
+        · · ·
+      </span>
+    )
+  } else if (cs.decoratorStyle === 'ornament') {
+    decorator = (
+      <span style={{ ...decoratorStyle, fontSize: `${fs * 1.1}pt`, color: '#8a7f72' }}>
+        ❧
+      </span>
+    )
+  }
+
+  const containerStyle: React.CSSProperties = {
+    textAlign:    align,
+    marginBottom: '2.4em',
+  }
+
+  const smallLabelStyle: React.CSSProperties = {
+    fontFamily:    `'${ff}', Georgia, serif`,
+    fontSize:      `${fs * 0.72}pt`,
+    letterSpacing: '0.16em',
+    textTransform: 'uppercase',
+    color:         '#8a7f72',
+    marginBottom:  '0.5em',
+    display:       'block',
+  }
+
+  const bigTitleStyle: React.CSSProperties = {
+    fontFamily: `'${ff}', Georgia, serif`,
+    fontSize:   `${fs * 1.55}pt`,
+    fontWeight: 700,
+    lineHeight: 1.2,
+    margin:     0,
+    color:      '#1a1917',
+    display:    'block',
+  }
+
+  // ── Special section (Introducción, Prólogo, Epílogo, Parte) ───────────────
+  if (isSpecial) {
+    const sectionLabel = SECTION_TYPE_LABELS[chapter.sectionType!]
+    return (
+      <div style={containerStyle}>
+        <span style={smallLabelStyle}>{sectionLabel}</span>
+        {chapter.title && (
+          <span style={bigTitleStyle}>{chapter.title}</span>
+        )}
+        {decorator}
+      </div>
+    )
+  }
+
+  // ── Regular chapter ───────────────────────────────────────────────────────
+
+  const numLabel = cs.showNumber && cs.numberStyle !== 'none'
+    ? `Capítulo ${fmtNum(chNum, cs.numberStyle)}`
+    : null
+
+  const titleLabel = cs.showTitle && chapter.title
+    ? chapter.title
+    : null
+
+  const hasRealTitle = titleLabel && !isGenericTitle(titleLabel)
+
+  // title-only: just the chapter title, no number prefix
+  if (fmt === 'title-only') {
+    return (
+      <div style={containerStyle}>
+        {titleLabel && <span style={bigTitleStyle}>{titleLabel}</span>}
+        {decorator}
+      </div>
+    )
+  }
+
+  // combined: "Capítulo 1: El terremoto" on one line
+  if (fmt === 'combined') {
+    if (numLabel && hasRealTitle) {
+      // Single combined line
+      return (
+        <div style={containerStyle}>
+          <span style={bigTitleStyle}>
+            {numLabel}
+            <span style={{ fontWeight: 400, color: '#8a7f72', margin: '0 0.35em' }}>·</span>
+            {titleLabel}
+          </span>
+          {decorator}
+        </div>
+      )
+    }
+    if (numLabel && !hasRealTitle) {
+      return (
+        <div style={containerStyle}>
+          <span style={bigTitleStyle}>{numLabel}</span>
+          {decorator}
+        </div>
+      )
+    }
+    if (!numLabel && titleLabel) {
+      return (
+        <div style={containerStyle}>
+          <span style={bigTitleStyle}>{titleLabel}</span>
+          {decorator}
+        </div>
+      )
+    }
+  }
+
+  // separate (default/legacy): number label above, big title below
+  return (
+    <div style={containerStyle}>
+      {numLabel && <span style={smallLabelStyle}>{numLabel}</span>}
+      {titleLabel && !(numLabel && isGenericTitle(titleLabel)) && (
+        <span style={bigTitleStyle}>{titleLabel}</span>
+      )}
+      {decorator}
+    </div>
+  )
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 type Props = {
   project: Project
@@ -41,13 +206,11 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
   const { settings, chapters } = project
   const cs = settings.chapterStyles[0]
 
-  // Internal navigation index — syncs with activeChapterId from editor
   const [previewIdx, setPreviewIdx] = useState<number>(() => {
     const idx = chapters.findIndex((c) => c.id === activeChapterId)
     return idx >= 0 ? idx : 0
   })
 
-  // When editor changes active chapter, sync preview
   useEffect(() => {
     const idx = chapters.findIndex((c) => c.id === activeChapterId)
     if (idx >= 0 && idx !== previewIdx) setPreviewIdx(idx)
@@ -61,19 +224,14 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
 
   const chapter = chapters[previewIdx] ?? chapters[0]
 
-  // A title like "Capítulo 1" or "capitulo 3" is just a placeholder —
-  // when showNumber is active it would duplicate the number label above it.
-  const isGenericTitle = (t: string) => /^cap[íi]tulo\s*\d+$/i.test(t.trim())
-
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerW, setContainerW] = useState(236)
 
-  // Measure real container width and react to resize
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return
     const obs = new ResizeObserver(([entry]) => {
-      setContainerW(entry.contentRect.width - 32) // 16px padding each side
+      setContainerW(entry.contentRect.width - 32)
     })
     obs.observe(el)
     return () => obs.disconnect()
@@ -106,7 +264,7 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
             onClick={() => goTo(previewIdx - 1)}
             disabled={previewIdx === 0}
             className="p-1 rounded-md hover:bg-parchment-200 text-ink-500 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            title="Capítulo anterior"
+            title="Anterior"
           >
             <ChevronLeft size={15} strokeWidth={2} />
           </button>
@@ -124,7 +282,7 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
             onClick={() => goTo(previewIdx + 1)}
             disabled={previewIdx === chapters.length - 1}
             className="p-1 rounded-md hover:bg-parchment-200 text-ink-500 disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
-            title="Capítulo siguiente"
+            title="Siguiente"
           >
             <ChevronRight size={15} strokeWidth={2} />
           </button>
@@ -137,13 +295,12 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
           <p className="text-xs text-ink-400 mt-8">Sin capítulos</p>
         ) : (
           <>
-            {/* Page shadow wrapper — scales the page down to fit */}
             <div
               style={{
-                width:          pageW * scale,
-                height:         pageH * scale,
-                flexShrink:     0,
-                position:       'relative',
+                width:      pageW * scale,
+                height:     pageH * scale,
+                flexShrink: 0,
+                position:   'relative',
               }}
             >
               <div
@@ -178,56 +335,12 @@ export default function BookPreview({ project, activeChapterId, onChapterChange 
                   }}
                 >
                   {/* Chapter heading */}
-                  <div style={{ textAlign: cs.alignment, marginBottom: '2.4em' }}>
-                    {cs.showNumber && cs.numberStyle !== 'none' && (
-                      <p style={{
-                        fontSize:      `${settings.fontSize * 0.72}pt`,
-                        letterSpacing: '0.16em',
-                        textTransform: 'uppercase',
-                        color:         '#8a7f72',
-                        marginBottom:  '0.5em',
-                        fontFamily:    settings.fontFamily,
-                      }}>
-                        Capítulo {fmtNum(chapter.order, cs.numberStyle)}
-                      </p>
-                    )}
-
-                    {cs.showTitle &&
-                     /* Skip title when it's a generic "Capítulo N" and the
-                        number label above already conveys that information */
-                     !(cs.showNumber && cs.numberStyle !== 'none' && isGenericTitle(chapter.title ?? '')) && (
-                      <h2 style={{
-                        fontFamily: settings.fontFamily,
-                        fontSize:   `${settings.fontSize * 1.55}pt`,
-                        fontWeight: 700,
-                        lineHeight: 1.2,
-                        margin:     0,
-                        color:      '#1a1917',
-                      }}>
-                        {chapter.title}
-                      </h2>
-                    )}
-
-                    {cs.decoratorStyle === 'line' && (
-                      <div style={{
-                        width:      36,
-                        height:     1,
-                        background: '#c4b9ad',
-                        margin:     cs.alignment === 'center' ? '1em auto 0' :
-                                    cs.alignment === 'right'  ? '1em 0 0 auto' : '1em auto 0 0',
-                      }} />
-                    )}
-                    {cs.decoratorStyle === 'dots' && (
-                      <p style={{ marginTop: '1em', letterSpacing: '0.3em', color: '#b0a090', fontSize: `${settings.fontSize * 0.85}pt` }}>
-                        · · ·
-                      </p>
-                    )}
-                    {cs.decoratorStyle === 'ornament' && (
-                      <p style={{ marginTop: '0.8em', fontSize: `${settings.fontSize * 1.1}pt`, color: '#8a7f72' }}>
-                        ❧
-                      </p>
-                    )}
-                  </div>
+                  <ChapterHeading
+                    chapter={chapter}
+                    chapters={chapters}
+                    cs={cs}
+                    settings={settings}
+                  />
 
                   {/* Body */}
                   {chapter.content ? (

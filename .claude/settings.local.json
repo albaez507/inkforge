@@ -22,7 +22,11 @@
       "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__get_publishable_keys",
       "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__apply_migration",
       "Bash(npm install:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(find '/c/Users/witha/Documents/DEVELOPMENT EMANUEL/inkforge/src' -type f \\\\\\(-name *.tsx -o -name *.ts \\\\\\))",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "mcp__d3f34316-39f3-48cb-96cd-f1791f9626b7__deploy_edge_function"
     ]
   }
 }

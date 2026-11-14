@@ -1,4 +1,4 @@
-import type { BookSettings } from '../../types'
+import type { BookSettings, HeadingFormat } from '../../types'
 import { TRIM_SIZES } from '../../types'
 import { useProjectStore } from '../../store/projectStore'
 
@@ -161,6 +161,41 @@ export default function BookSettingsPanel({ projectId, settings }: Props) {
                 Era una tarde de otoño cuando el detective llegó al pueblo. Las hojas caían lentas sobre los adoquines mojados, y el viento traía consigo el olor a tierra húmeda y misterio.
               </p>
             </div>
+          </div>
+        </Section>
+
+        {/* Chapter headings */}
+        <Section title="Encabezados de capítulo">
+          <FieldLabel>Formato del encabezado</FieldLabel>
+          <div className="space-y-2">
+            {([
+              { value: 'combined',   label: 'Combinado',   desc: 'Capítulo Uno · El terremoto' },
+              { value: 'separate',   label: 'Separado',    desc: 'CAPÍTULO UNO / El terremoto (dos líneas)' },
+              { value: 'title-only', label: 'Solo título', desc: 'El terremoto (sin número)' },
+            ] as { value: HeadingFormat; label: string; desc: string }[]).map(({ value, label, desc }) => {
+              const active = (settings.chapterStyles[0]?.headingFormat ?? 'combined') === value
+              return (
+                <button
+                  key={value}
+                  onClick={() => {
+                    const updated = settings.chapterStyles.map((cs, i) =>
+                      i === 0 ? { ...cs, headingFormat: value } : cs
+                    )
+                    patch({ chapterStyles: updated })
+                  }}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all ${
+                    active
+                      ? 'border-ink-700 bg-ink-900 text-white'
+                      : 'border-parchment-300 bg-white text-ink-700 hover:border-ink-400 hover:bg-parchment-50'
+                  }`}
+                >
+                  <span className="block font-medium text-xs">{label}</span>
+                  <span className={`block text-2xs mt-0.5 font-mono ${active ? 'text-parchment-300' : 'text-ink-400'}`}>
+                    {desc}
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </Section>
 

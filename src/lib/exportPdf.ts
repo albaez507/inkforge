@@ -1,4 +1,5 @@
 import type { Project, Chapter, ChapterStyle, BookSettings } from '../types'
+import { SECTION_TYPE_LABELS } from '../types'
 
 // ── Number helpers ──────────────────────────────────────────────────────────
 
@@ -31,37 +32,75 @@ function isGenericTitle(t: string): boolean {
   return /^cap[íi]tulo\s*\d+$/i.test(t.trim())
 }
 
-function buildChapterHeading(ch: Chapter, cs: ChapterStyle, settings: BookSettings): string {
-  const fs = settings.fontSize
-  const ff = settings.fontFamily
+function getChapterNumber(chapters: Chapter[], chapterId: string): number {
+  const regularChapters = chapters.filter((c) => !c.sectionType || c.sectionType === 'chapter')
+  const idx = regularChapters.findIndex((c) => c.id === chapterId)
+  return idx + 1
+}
+
+function buildChapterHeading(ch: Chapter, chapters: Chapter[], cs: ChapterStyle, settings: BookSettings): string {
+  const fs    = settings.fontSize
+  const ff    = settings.fontFamily
   const align = cs.alignment
+  const fmt   = cs.headingFormat ?? 'combined'
+
+  const smallLabel = `font-family:'${ff}',Georgia,serif;font-size:${fs * 0.72}pt;letter-spacing:0.16em;text-transform:uppercase;color:#8a7f72;margin:0 0 0.5em;display:block;`
+  const bigTitle   = `font-family:'${ff}',Georgia,serif;font-size:${fs * 1.55}pt;font-weight:700;line-height:1.2;color:#1a1917;margin:0;display:block;`
 
   let decoratorHtml = ''
   if (cs.decoratorStyle === 'line') {
-    const marginAuto = align === 'center' ? 'margin: 1em auto 0;' :
-                       align === 'right'  ? 'margin: 1em 0 0 auto;' : 'margin: 1em auto 0 0;'
-    decoratorHtml = `<div style="width:36px;height:1px;background:#c4b9ad;${marginAuto}"></div>`
+    const m = align === 'center' ? 'margin:1em auto 0;' : align === 'right' ? 'margin:1em 0 0 auto;' : 'margin:1em auto 0 0;'
+    decoratorHtml = `<div style="width:36px;height:1px;background:#c4b9ad;${m}"></div>`
   } else if (cs.decoratorStyle === 'dots') {
     decoratorHtml = `<p style="margin-top:1em;letter-spacing:0.3em;color:#b0a090;font-size:${fs * 0.85}pt;">· · ·</p>`
   } else if (cs.decoratorStyle === 'ornament') {
     decoratorHtml = `<p style="margin-top:0.8em;font-size:${fs * 1.1}pt;color:#8a7f72;">❧</p>`
   }
 
-  return `
-    <div style="text-align:${align};margin-bottom:2.4em;margin-top:0.5in;">
-      ${cs.showNumber && cs.numberStyle !== 'none' ? `
-        <p style="font-family:'${ff}',Georgia,serif;font-size:${fs * 0.72}pt;letter-spacing:0.16em;text-transform:uppercase;color:#8a7f72;margin-bottom:0.5em;">
-          Capítulo ${fmtNum(ch.order, cs.numberStyle)}
-        </p>
-      ` : ''}
-      ${cs.showTitle && !(cs.showNumber && cs.numberStyle !== 'none' && isGenericTitle(ch.title ?? '')) ? `
-        <h2 style="font-family:'${ff}',Georgia,serif;font-size:${fs * 1.55}pt;font-weight:700;line-height:1.2;color:#1a1917;margin:0;">
-          ${ch.title}
-        </h2>
-      ` : ''}
-      ${decoratorHtml}
-    </div>
-  `
+  const wrap = (inner: string) =>
+    `<div style="text-align:${align};margin-bottom:2.4em;margin-top:0.5in;">${inner}${decoratorHtml}</div>`
+
+  // ── Special section (Introducción, Prólogo, Epílogo, Parte) ──────────────
+  const isSpecial = ch.sectionType && ch.sectionType !== 'chapter'
+  if (isSpecial) {
+    const sectionLabel = SECTION_TYPE_LABELS[ch.sectionType!]
+    return wrap(`
+      <p style="${smallLabel}">${sectionLabel}</p>
+      ${ch.title ? `<span style="${bigTitle}">${ch.title}</span>` : ''}
+    `)
+  }
+
+  // ── Regular chapter ───────────────────────────────────────────────────────
+  const chNum    = getChapterNumber(chapters, ch.id)
+  const numLabel = cs.showNumber && cs.numberStyle !== 'none'
+    ? `Capítulo ${fmtNum(chNum, cs.numberStyle)}`
+    : null
+
+  const hasRealTitle = cs.showTitle && ch.title && !isGenericTitle(ch.title)
+  const titleLabel   = cs.showTitle && ch.title ? ch.title : null
+
+  if (fmt === 'title-only') {
+    return wrap(titleLabel ? `<span style="${bigTitle}">${titleLabel}</span>` : '')
+  }
+
+  if (fmt === 'combined') {
+    if (numLabel && hasRealTitle) {
+      return wrap(`
+        <span style="${bigTitle}">
+          ${numLabel}<span style="font-weight:400;color:#8a7f72;margin:0 0.35em;">·</span>${titleLabel}
+        </span>
+      `)
+    }
+    if (numLabel) return wrap(`<span style="${bigTitle}">${numLabel}</span>`)
+    if (titleLabel) return wrap(`<span style="${bigTitle}">${titleLabel}</span>`)
+    return wrap('')
+  }
+
+  // separate (legacy default)
+  return wrap(`
+    ${numLabel ? `<p style="${smallLabel}">${numLabel}</p>` : ''}
+    ${titleLabel && !(numLabel && isGenericTitle(titleLabel)) ? `<span style="${bigTitle}">${titleLabel}</span>` : ''}
+  `)
 }
 
 // ── Google Fonts URL ────────────────────────────────────────────────────────
@@ -157,7 +196,7 @@ export function exportBookAsPdf(project: Project): void {
   chapters.forEach(ch => {
     sections.push(`
       <section class="page-break">
-        ${buildChapterHeading(ch, cs, settings)}
+        ${buildChapterHeading(ch, chapters, cs, settings)}
         <div class="prose-body">${ch.content || ''}</div>
       </section>
     `)

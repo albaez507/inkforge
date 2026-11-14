@@ -17,6 +17,31 @@ export const TRIM_SIZES: TrimSize[] = [
   { label: '8.5 × 11 in (Letter)', width: 8.5, height: 11 },
 ]
 
+// ── Section types ────────────────────────────────────────────────────────────
+
+export type SectionType = 'chapter' | 'introduction' | 'prologue' | 'epilogue' | 'part'
+
+export const SECTION_TYPE_LABELS: Record<SectionType, string> = {
+  chapter:      'Capítulo',
+  introduction: 'Introducción',
+  prologue:     'Prólogo',
+  epilogue:     'Epílogo',
+  part:         'Parte',
+}
+
+// Abbreviation shown in sidebar for non-chapter sections
+export const SECTION_TYPE_SHORT: Record<SectionType, string> = {
+  chapter:      '',
+  introduction: 'intro',
+  prologue:     'pról.',
+  epilogue:     'epíl.',
+  part:         'parte',
+}
+
+// ── Chapter style ────────────────────────────────────────────────────────────
+
+export type HeadingFormat = 'separate' | 'combined' | 'title-only'
+
 export type ChapterStyle = {
   id: string
   name: string
@@ -26,7 +51,11 @@ export type ChapterStyle = {
   alignment: 'left' | 'center' | 'right'
   numberStyle: 'arabic' | 'roman' | 'word' | 'none'
   decoratorStyle: 'none' | 'line' | 'ornament' | 'dots'
+  // Controls how number and title are laid out in the heading
+  headingFormat: HeadingFormat
 }
+
+// ── Matter section ────────────────────────────────────────────────────────────
 
 export type MatterSection = {
   id: string
@@ -37,6 +66,8 @@ export type MatterSection = {
   position: 'front' | 'back'
 }
 
+// ── Chapter ──────────────────────────────────────────────────────────────────
+
 export type Chapter = {
   id: string
   title: string
@@ -45,9 +76,12 @@ export type Chapter = {
   styleId: string
   wordCount: number
   targetWordCount?: number
+  sectionType: SectionType   // default 'chapter'
   createdAt: string
   updatedAt: string
 }
+
+// ── Book settings ─────────────────────────────────────────────────────────────
 
 export type BookSettings = {
   trimSize: TrimSize
@@ -60,6 +94,8 @@ export type BookSettings = {
   marginOuter: number
   chapterStyles: ChapterStyle[]
 }
+
+// ── Project ───────────────────────────────────────────────────────────────────
 
 export type Project = {
   id: string

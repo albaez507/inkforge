@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, MatterSection, BookSettings } from '../types'
+import type { Project, Chapter, MatterSection, BookSettings, SectionType } from '../types'
 import { TRIM_SIZES } from '../types'
 import { supabase } from '../lib/supabase'
 
@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: BookSettings = {
       alignment: 'center',
       numberStyle: 'word',
       decoratorStyle: 'line',
+      headingFormat: 'combined',
     },
   ],
 }
@@ -39,6 +40,12 @@ function randomCoverColor() {
 // Convert DB row → Project shape
 function rowToProject(row: Record<string, unknown>, chapters: Chapter[] = [], frontMatter: MatterSection[] = [], backMatter: MatterSection[] = []): Project {
   const settings = row.settings as Partial<BookSettings> | null
+  const defaultStyle = DEFAULT_SETTINGS.chapterStyles[0]
+  // Deep-merge chapterStyles so new fields (headingFormat, etc.) always have defaults
+  const mergedChapterStyles = (settings?.chapterStyles ?? []).map((cs) => ({
+    ...defaultStyle,
+    ...cs,
+  }))
   return {
     id:              row.id as string,
     userId:          row.user_id as string,
@@ -49,7 +56,11 @@ function rowToProject(row: Record<string, unknown>, chapters: Chapter[] = [], fr
     status:          row.status as Project['status'],
     coverColor:      row.cover_color as string,
     targetWordCount: row.target_word_count as number | undefined,
-    settings:        { ...DEFAULT_SETTINGS, ...settings },
+    settings:        {
+      ...DEFAULT_SETTINGS,
+      ...settings,
+      chapterStyles: mergedChapterStyles.length ? mergedChapterStyles : DEFAULT_SETTINGS.chapterStyles,
+    },
     wordCount:       chapters.reduce((s, c) => s + c.wordCount, 0),
     chapters,
     frontMatter,
@@ -68,6 +79,7 @@ function rowToChapter(row: Record<string, unknown>): Chapter {
     styleId:         row.style_id as string,
     wordCount:       row.word_count as number,
     targetWordCount: row.target_word_count as number | undefined,
+    sectionType:     (row.section_type as SectionType) ?? 'chapter',
     createdAt:       row.created_at as string,
     updatedAt:       row.updated_at as string,
   }
@@ -94,7 +106,8 @@ type ProjectStore = {
   addProject:          (data: Partial<Project>, userId: string) => Promise<void>
   updateProject:       (id: string, data: Partial<Project>) => Promise<void>
   deleteProject:       (id: string) => Promise<void>
-  addChapter:          (projectId: string, title: string) => Promise<void>
+  addChapter:          (projectId: string, title: string, sectionType?: SectionType) => Promise<void>
+  importChapters:      (projectId: string, items: Array<{ title: string; sectionType: SectionType; content: string }>) => Promise<void>
   updateChapter:       (projectId: string, chapterId: string, data: Partial<Chapter>) => Promise<void>
   deleteChapter:       (projectId: string, chapterId: string) => Promise<void>
   reorderChapters:     (projectId: string, orderedIds: string[]) => Promise<void>
@@ -210,14 +223,14 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   // ── Add chapter ───────────────────────────────────────────────────────────
-  addChapter: async (projectId, title) => {
+  addChapter: async (projectId, title, sectionType = 'chapter') => {
     const project = get().projects.find((p) => p.id === projectId)
     if (!project) return
 
     const order = project.chapters.length + 1
     const { data: row, error } = await supabase
       .from('chapters')
-      .insert({ project_id: projectId, title, order, content: '', style_id: 'default', word_count: 0 })
+      .insert({ project_id: projectId, title, order, content: '', style_id: 'default', word_count: 0, section_type: sectionType })
       .select()
       .single()
 
@@ -228,6 +241,43 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       projects: s.projects.map((p) =>
         p.id === projectId
           ? { ...p, chapters: [...p.chapters, newChapter], updatedAt: new Date().toISOString() }
+          : p
+      ),
+    }))
+  },
+
+  // ── Import multiple chapters at once (batch insert) ──────────────────────
+  importChapters: async (projectId, items) => {
+    const project = get().projects.find((p) => p.id === projectId)
+    if (!project || !items.length) return
+
+    const startOrder = project.chapters.length + 1
+    const rows = items.map((item, i) => ({
+      project_id:   projectId,
+      title:        item.title,
+      order:        startOrder + i,
+      content:      item.content,
+      style_id:     'default',
+      word_count:   item.content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean).length,
+      section_type: item.sectionType,
+    }))
+
+    const { data, error } = await supabase
+      .from('chapters')
+      .insert(rows)
+      .select()
+
+    if (error) { console.error('importChapters:', error); return }
+
+    const newChapters = (data as Record<string, unknown>[]).map(rowToChapter)
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              chapters:   [...p.chapters, ...newChapters],
+              updatedAt:  new Date().toISOString(),
+            }
           : p
       ),
     }))
